@@ -3,7 +3,6 @@ import Foundation
 import Alamofire
 
 public final class LFM {
-    
     /**
      Your API key obtained from Last.fm.
      */
@@ -19,6 +18,8 @@ public final class LFM {
      Requested language of `getInfo` calls.
      */
     public static var language = "en"
+    
+    public static let auth = Auth()
         
     fileprivate class var defaultParams: [String: String] {
         return [
@@ -37,9 +38,6 @@ public final class LFM {
         }
         return params
     }
-    
-    public static let auth = Auth()
-    
 }
  
  public extension LFM {
