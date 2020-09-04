@@ -18,21 +18,25 @@ extension LFMMethod {
     }
     
     static var root: String {
-        return "https://ws.audioscrobbler.com/2.0/"
+        return "ws.audioscrobbler.com"
+    }
+    
+    static var path: String {
+        return "/2.0/"
     }
 }
 
 extension LFMMethod where Self: RawRepresentable, RawValue == String {
-    func composed(with params: [String: Any]) -> URL? {
-        var query = Self.root + "?method=" + rawValue
-        let pairs = params.sorted(by: {$0.key < $1.key})
-        
-        for (key, value) in pairs {
-            guard let str = value as? LosslessStringConvertible else {
-                continue
-            }
-            query += "&\(key)=\(str)"
+    func composed(with params: [String: String]) -> URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = Self.root
+        components.path = Self.path
+        components.queryItems =
+            [URLQueryItem(name: "method", value: rawValue)] +
+            params.compactMap { key, value in
+            return URLQueryItem(name: key, value: value)
         }
-        return URL(string: query)
+        return components.url
     }
 }

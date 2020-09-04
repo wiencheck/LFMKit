@@ -20,7 +20,7 @@ public final class LFM {
      */
     public static var language = "en"
         
-    fileprivate class var defaultParams: [String: Any] {
+    fileprivate class var defaultParams: [String: String] {
         return [
         "api_key": apiKey,
         "lang": language,
@@ -28,7 +28,7 @@ public final class LFM {
         ]
     }
     
-    fileprivate class var defaultAuthParams: [String: Any] {
+    fileprivate class var defaultAuthParams: [String: String] {
         var params = [
             "api_key": apiKey
         ]
@@ -45,11 +45,12 @@ public final class LFM {
  public extension LFM {
     enum album {
         public static func getInfo(name: String, artist: String, success: @escaping (LFMAlbum) -> Void, failure: ((Error) -> Void)? = nil) {
-            // Use lowercased strings to avoid unexpected issues later.
-            let _name = name.lowercased()
-            let _artist = artist.lowercased()
             
-            guard let url = composeUrl(album: _name, artist: _artist) else {
+            var params = defaultParams
+            params["album"] = name
+            params["artist"] = artist
+            
+            guard let url = Method.artist.composed(with: params) else {
                 print("*** Couldn't create valid url for the album.")
                 return
             }
@@ -75,10 +76,10 @@ public final class LFM {
  public extension LFM {
     enum artist {
         public static func getInfo(name: String, success: @escaping (LFMArtist) -> Void, failure: ((Error) -> Void)? = nil) {
-            // Use lowercased strings to avoid unexpected issues later.
-            let _name = name.lowercased()
             
-            guard let url = composeUrl(artist: _name) else {
+            var params = defaultParams
+            params["artist"] = name
+            guard let url = Method.artist.composed(with: params) else {
                 print("*** Couldn't create valid url for the artist.")
                 return
             }
@@ -95,6 +96,8 @@ public final class LFM {
                 } else if let artistResponse = try? JSONDecoder().decode(ArtistResponse.self, from: data) {
                     let artist = artistResponse.artist
                     success(artist)
+                } else {
+                    failure?(LFMError(message: "Unknown error"))
                 }
             }
         }
@@ -102,6 +105,9 @@ public final class LFM {
  }
  
  public extension LFM {
+    /**
+     Module containing methods to call the /track API methods
+     */
     enum track {
         public static func nowPlaying(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, success: (() -> Void)? = nil, failure: ((Error) -> Void)? = nil) {
             
@@ -115,18 +121,18 @@ public final class LFM {
             var params = LFM.defaultAuthParams
             params["track"] = name
             params["artist"] = artist
-            params["timestamp"] = Int(Date().timeIntervalSince1970)
+            params["timestamp"] = String(Int(Date().timeIntervalSince1970))
             if let duration = duration {
-                params["duration"] = Int(duration)
+                params["duration"] = String(Int(duration))
             }
             
             let method = AuthenticatedMethod.nowPlaying
             params["api_sig"] = method.signed(with: params)
             params["format"] = "json"
-            params["track"] = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
-            params["artist"] = artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? artist
             
             guard let url = method.composed(with: params) else {
+                failure?(LFMError(message: "Failed to create url for method: \(method)"))
+                print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
                 return
             }
             Alamofire.request(url, method: .post).responseData { response in
@@ -157,19 +163,18 @@ public final class LFM {
             // We have to first add real name and artist so method's signature is correct
             params["track"] = name
             params["artist"] = artist
-            params["timestamp"] = Int(Date().timeIntervalSince1970)
+            params["timestamp"] = String(Int(Date().timeIntervalSince1970))
             if let duration = duration {
-                params["duration"] = Int(duration)
+                params["duration"] = String(Int(duration))
             }
             
             let method = AuthenticatedMethod.scrobble
             params["api_sig"] = method.signed(with: params)
             params["format"] = "json"
-            // Replace them with correctly encoded values for the real url
-            params["track"] = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
-            params["artist"] = artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? artist
             
             guard let url = method.composed(with: params) else {
+                failure?(LFMError(message: "Failed to create url for method: \(method)"))
+                print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
                 return
             }
             Alamofire.request(url, method: .post).responseData { response in
@@ -186,32 +191,6 @@ public final class LFM {
                 }
             }
         }
-    }
- }
-
-// MARK: Private methods
-private extension LFM {
-    class func composeUrl(album name: String, artist: String) -> URL? {
-        guard !LFM.apiKey.isEmpty else {
-            print("*** 'clientKey' cannot be empty")
-            return nil
-        }
-        var params = defaultParams
-        params["album"] = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
-        params["artist"] = artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? artist
-        
-        return Method.album.composed(with: params)
-    }
-    
-    class func composeUrl(artist name: String) -> URL? {
-        guard !LFM.apiKey.isEmpty else {
-            print("*** 'clientKey' cannot be empty")
-            return nil
-        }
-        var params = defaultParams
-        params["artist"] = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
-        
-        return Method.artist.composed(with: params)
     }
 }
 

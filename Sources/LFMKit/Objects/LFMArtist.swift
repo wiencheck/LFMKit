@@ -14,11 +14,7 @@ public struct LFMArtist: Codable {
         
     public let images: [LFMImage]
 
-    private let wiki: Wiki?
-    
-    public var summary: String? {
-        return wiki?.content
-    }
+    public let wiki: Wiki?
     
     private enum CodingKeys: String, CodingKey {
         case name, url
@@ -31,7 +27,7 @@ public struct LFMArtist: Codable {
         name = try container.decode(String.self, forKey: .name)
         url = try container.decode(String.self, forKey: .url)
         images = try container.decode([LFMImage].self, forKey: .images)
-        wiki = try container.decodeIfPresent(Wiki.self, forKey: .wiki)
+        wiki = try? container.decode(Wiki.self, forKey: .wiki)
     }
     
 }

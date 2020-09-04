@@ -22,6 +22,7 @@ extension LFMAuthenticatedMethod where Self: RawRepresentable, RawValue == Strin
         var updatedParams = params
         updatedParams["method"] = rawValue
         
+        // Parameters have to be sorted alphabetically, according do docs.
         let sortedKeys = updatedParams.keys.sorted(by: <)
         let pairs = sortedKeys.compactMap { key in
             guard let value = updatedParams[key] as? LosslessStringConvertible else { return nil }

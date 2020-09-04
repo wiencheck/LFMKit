@@ -9,6 +9,7 @@ import Foundation
 
 /**
  # List of errors
+ 0 : Custom error, shouldn't be displayed to user
  1 : This error does not exist
  2 : Invalid service -This service does not exist
  3 : Invalid Method - No method with that name in this package
@@ -39,17 +40,17 @@ import Foundation
  29 : Rate Limit Exceded - Your IP has made too many requests in a short period, exceeding our API guidelines
  */
 
-struct LFMError: Error, Decodable {
-    init(code: Int? = nil, message: String) {
+public struct LFMError: Error, Decodable {
+    init(code: Int = 0, message: String) {
         self.code = code
         self.message = message
     }
     
-    let code: Int?
+    public let code: Int
     
-    let message: String
+    public let message: String
     
-    var errorDescription: String? {
+    public var errorDescription: String? {
         return message
     }
     
@@ -60,8 +61,8 @@ struct LFMError: Error, Decodable {
 }
 
 extension LFMError: CustomStringConvertible {
-    var description: String {
-        return "Error code: \(code ?? -1)\n\(message)"
+    public var description: String {
+        return "Error code: \(code)\n\(message)"
     }
 }
 

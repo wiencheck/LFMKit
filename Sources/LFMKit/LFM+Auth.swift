@@ -50,22 +50,28 @@ public extension LFM {
                 print("*** 'clientKey' cannot be empty")
                 return
             }
-            
+            let method = Method.token
             let params = [
                 "api_key": LFM.apiKey,
                 "format": "json"
             ]
-            guard let url = Method.token.composed(with: params) else {
-                //failure?(nil)
+            guard let url = method.composed(with: params) else {
+                failure?(LFMError(message: "Failed to create url for method: \(method)"))
+                print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
                 return
             }
             
-            Alamofire.request(url).responseJSON { response in
+            Alamofire.request(url).responseData { response in
                 if let error = response.error {
                     failure?(error)
-                } else if let json = response.value as? [String: String],
-                    let token = json["token"] {
-                    success(token)
+                }
+                guard let data = response.value else {
+                    return
+                }
+                if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
+                    failure?(error)
+                } else if let tokenResponse = try? JSONDecoder().decode(TokenResponse.self, from: data) {
+                    success(tokenResponse.token)
                 }
             }
         }
@@ -83,12 +89,14 @@ public extension LFM {
                     "api_key": LFM.apiKey
                 ]
                 
-                let signature = AuthenticatedMethod.session.signed(with: params)
-                params["api_sig"] = signature
+                let method = AuthenticatedMethod.session
+                params["api_sig"] = method.signed(with: params)
                 // Default format is XML but we want Jason!
                 params["format"] = "json"
                 
                 guard let url = AuthenticatedMethod.session.composed(with: params) else {
+                    failure?(LFMError(message: "Failed to create url for method: \(method)"))
+                    print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
                     return
                 }
                 Alamofire.request(url, method: .post).responseData { response in

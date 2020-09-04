@@ -8,9 +8,9 @@
 import Foundation
 
 public struct LFMImage: Codable {
-    let url: String
+    public let url: String
     
-    let size: ImageSize
+    public let size: ImageSize
     
     private enum CodingKeys: String, CodingKey {
         case url = "#text"

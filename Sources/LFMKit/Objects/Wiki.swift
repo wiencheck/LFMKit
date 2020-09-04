@@ -7,11 +7,20 @@
 
 import Foundation
 
-struct Wiki: Codable {
+public struct Wiki: Codable {
+    /**
+     Shortened description, containing hyperlink to the webpage.
+     */
+    public let summary: String
+    
+    /**
+     Full description.
+     */
     public let content: String
         
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        summary = try container.decode(String.self, forKey: .summary)
         var con = try container.decode(String.self, forKey: .content)
         
         // Cut hyperlink at the end.
