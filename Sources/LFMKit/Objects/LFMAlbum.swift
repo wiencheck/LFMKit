@@ -18,11 +18,7 @@ public struct LFMAlbum: Codable {
     
     public let images: [LFMImage]
 
-    private let wiki: Wiki?
-    
-    public var summary: String? {
-        return wiki?.content
-    }
+    public let wiki: Wiki?
     
     private enum CodingKeys: String, CodingKey {
         case name, artist, url, wiki
@@ -36,6 +32,7 @@ public struct LFMAlbum: Codable {
         artist = try container.decode(String.self, forKey: .artist)
         url = try container.decode(String.self, forKey: .url)
         images = try container.decode([LFMImage].self, forKey: .images)
+        wiki = try? container.decode(Wiki.self, forKey: .wiki)
         
         if let date = try container.decodeIfPresent(String.self, forKey: .releaseDate) {
             // Dates can come in format '6 Apr 1999, 00:00'
@@ -46,7 +43,6 @@ public struct LFMAlbum: Codable {
         } else {
             releaseDate = nil
         }
-        wiki = try container.decodeIfPresent(Wiki.self, forKey: .wiki)
     }
     
 }
