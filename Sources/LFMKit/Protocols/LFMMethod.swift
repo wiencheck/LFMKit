@@ -7,8 +7,6 @@
 
 import Foundation
 
-
-
 protocol LFMMethod {
     static var apiKey: String { get }
     static var root: String { get }
