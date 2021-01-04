@@ -18,7 +18,7 @@ class ViewController: UIViewController {
         /// Secret is used for calls requiring authentication, like `scrobble`, or `updateNowPlaying`
         LFM.apiSecret = <#apiSecret#>
         
-        LFM.auth.authenticate(username: <#String#>, password: <#String#>, success: { session in
+        LFM.Auth.authenticate(username: <#String#>, password: <#String#>, success: { session in
             print(session.name)
         }, failure: { error in
             /// This error is `LFMError`. If its code equals 0, it was created by framework and indicates an error with logic somewhere in code and should not be presented to user.

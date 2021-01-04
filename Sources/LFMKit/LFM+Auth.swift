@@ -6,13 +6,12 @@
 //
 
 import Foundation
-import Alamofire
 
 public extension LFM {
-    class Auth {
+    enum Auth {
         private static let sessionUserDefaultsKey = "LFMSessionUserDefaultsKey"
         
-        public private(set)var session: Session? {
+        public private(set) static var session: Session? {
             get {
                 guard let data = UserDefaults.standard.data(forKey: Auth.sessionUserDefaultsKey),
                     let decoded = try? JSONDecoder().decode(Session.self, from: data) else {
@@ -29,54 +28,47 @@ public extension LFM {
             }
         }
         
-        public func renewSession(success: (() -> Void)? = nil, failure: ((Error) -> Void)? = nil) {
+        public static func renewSession(completion: ((Error?) -> Void)?) {
             if session == nil {
                 print("*** Session cannot be nil")
                 return
             }
             
-            token(success: { token in
-                self.session?.token = token
-                success?()
-            }, failure: failure)
+            token { result in
+                switch result {
+                case .success(_):
+                    completion?(nil)
+                case .failure(let error):
+                    completion?(error)
+                }
+            }
         }
         
-        public func removeSession() {
+        public static func removeSession() {
             session = nil
         }
         
-        private func token(success: @escaping (String) -> Void, failure: ((Error) -> Void)? = nil) {
+        private static func token(completion: @escaping (Result<String, Error>) -> Void) {
             guard !LFM.apiKey.isEmpty else {
                 print("*** 'clientKey' cannot be empty")
                 return
             }
-            let method = Method.token
             let params = [
                 "api_key": LFM.apiKey,
                 "format": "json"
             ]
-            guard let url = method.composed(with: params) else {
-                failure?(LFMError(message: "Failed to create url for method: \(method)"))
-                print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
-                return
-            }
             
-            Alamofire.request(url).responseData { response in
-                if let error = response.error {
-                    failure?(error)
-                }
-                guard let data = response.value else {
-                    return
-                }
-                if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
-                    failure?(error)
-                } else if let tokenResponse = try? JSONDecoder().decode(TokenResponse.self, from: data) {
-                    success(tokenResponse.token)
+            LFM.shared.call(method: Method.token, queryParams: params) { (result: Result<TokenResponse, Error>) in
+                switch result {
+                case .success(let response):
+                    completion(.success(response.token))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
             }
         }
         
-        public func authenticate(username: String, password: String, success: @escaping (Session) -> Void, failure: ((Error) -> Void)? = nil) {
+        public static func authenticate(username: String, password: String, completion: @escaping (Result<Session, Error>) -> Void) {
             guard !LFM.apiKey.isEmpty && !LFM.apiSecret.isEmpty else {
                 print("*** 'clientKey' cannot be empty")
                 return
@@ -94,40 +86,34 @@ public extension LFM {
                 // Default format is XML but we want Jason!
                 params["format"] = "json"
                 
-                guard let url = AuthenticatedMethod.session.composed(with: params) else {
-                    failure?(LFMError(message: "Failed to create url for method: \(method)"))
-                    print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
-                    return
-                }
-                Alamofire.request(url, method: .post).responseData { response in
-                    if let error = response.error {
-                        failure?(error)
-                        return
-                    }
-                    guard let data = response.value else {
-                        return
-                    }
-                    if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
-                        failure?(error)
-                    } else if let sessionResponse = try? JSONDecoder().decode(SessionResponse.self, from: data) {
-                        var session = sessionResponse.session
-                        session.token = token
-                        self.session = session
-                        success(session)
+                LFM.shared.call(method: method, queryParams: params) { (result: Result<SessionResponse, Error>) in
+                    switch result {
+                    case .success(let response):
+                        var newSession = response.session
+                        newSession.token = token
+                        self.session = newSession
+                        completion(.success(newSession))
+                    case .failure(let error):
+                        completion(.failure(error))
                     }
                 }
             }
             // Get token
-            token(success: { token in
-                // Session does not need updating
-                if var session = self.session {
-                    session.token = token
-                    self.session = session
-                    success(session)
-                    return
+            token { result in
+                switch result {
+                case .success(let token):
+                    // Session does not need updating
+                    if var session = self.session {
+                        session.token = token
+                        self.session = session
+                        completion(.success(session))
+                        return
+                    }
+                    updateSession(with: token)
+                case .failure(let error):
+                    completion(.failure(error))
                 }
-                updateSession(with: token)
-            }, failure: failure)
+            }
         }
     }
 }
@@ -140,6 +126,10 @@ extension LFM.Auth {
          -  api_sig
          */
         case token = "auth.gettoken"
+        
+        var httpMethod: HTTPMethod {
+            return .get
+        }
     }
     
     enum AuthenticatedMethod: String, LFMAuthenticatedMethod {
@@ -151,5 +141,9 @@ extension LFM.Auth {
          -  api_sig
          */
         case session = "auth.getMobileSession"
+        
+        var httpMethod: HTTPMethod {
+            return .post
+        }
     }
 }

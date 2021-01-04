@@ -10,7 +10,7 @@ import Foundation
 public struct LFMArtist: Codable {
     public let name: String
         
-    public let url: String
+    public let url: URL
         
     public let images: [LFMImage]
 
@@ -21,15 +21,6 @@ public struct LFMArtist: Codable {
         case wiki = "bio"
         case images = "image"
     }
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        name = try container.decode(String.self, forKey: .name)
-        url = try container.decode(String.self, forKey: .url)
-        images = try container.decode([LFMImage].self, forKey: .images)
-        wiki = try? container.decode(Wiki.self, forKey: .wiki)
-    }
-    
 }
 
 extension LFMArtist: CustomStringConvertible {

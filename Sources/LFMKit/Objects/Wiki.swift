@@ -27,7 +27,7 @@ public struct Wiki: Codable {
         if let linkRange = con.range(of: "<a href") {
             con.removeSubrange(linkRange.lowerBound ..< con.endIndex)
         }
-        con = con.trimmingCharacters(in: .whitespaces)
+        con = con.trimmingCharacters(in: .whitespacesAndNewlines)
         if con.isEmpty {
             throw LFMError(message: "wiki/content was empty")
         }

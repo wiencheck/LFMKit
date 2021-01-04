@@ -1,8 +1,8 @@
  
 import Foundation
-import Alamofire
 
 public final class LFM {
+    static let shared = LFM()
     /**
      Your API key obtained from Last.fm.
      */
@@ -18,8 +18,8 @@ public final class LFM {
      Requested language of `getInfo` calls.
      */
     public static var language = "en"
-    
-    public static let auth = Auth()
+        
+    private init() {}
         
     fileprivate class var defaultParams: [String: String] {
         return [
@@ -33,38 +33,96 @@ public final class LFM {
         var params = [
             "api_key": apiKey
         ]
-        if let sk = auth.session?.key {
+        if let sk = LFM.Auth.session?.key {
             params["sk"] = sk
         }
         return params
     }
+    
+    func call<T>(method: LFMMethod, queryParams: [String: String]?, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
+        guard let request = method.request(with: queryParams) else {
+            completion(.failure(LFMError.invalidRequest))
+            return
+        }
+        
+        perform(request: request, completion: completion)
+    }
+    
+    func call(method: LFMMethod, queryParams: [String: String]?, completion: ((Error?) -> Void)?) {
+        guard let request = method.request(with: queryParams) else {
+            completion?(LFMError.invalidRequest)
+            return
+        }
+        
+        perform(request: request, completion: completion)
+    }
+    
+    private func perform<T>(request: URLRequest, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse,
+                  let data = data, !data.isEmpty else {
+                completion(.failure(LFMError.couldNotReadData))
+                return
+            }
+            guard httpResponse.statusCode == 200 else {
+                let lfmError = (try? LFMJSONDecoder().decode(LFMError.self, from: data)) ?? LFMError.unknown
+                completion(.failure(lfmError))
+                return
+            }
+            do {
+                let decoded = try LFMJSONDecoder().decode(T.self, from: data)
+                completion(.success(decoded))
+            } catch let decodingError {
+                completion(.failure(decodingError))
+            }
+        }.resume()
+    }
+    
+    private func perform(request: URLRequest, completion: ((Error?) -> Void)?) {
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion?(error)
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse,
+                  let data = data, !data.isEmpty else {
+                completion?(LFMError.couldNotReadData)
+                return
+            }
+            if httpResponse.statusCode == 200 {
+                completion?(nil)
+                return
+            }
+            do {
+                let decoded = try LFMJSONDecoder().decode(LFMError.self, from: data)
+                completion?(decoded)
+            } catch let decodingError {
+                completion?(decodingError)
+            }
+        }.resume()
+    }
 }
  
  public extension LFM {
-    enum album {
-        public static func getInfo(name: String, artist: String, success: @escaping (LFMAlbum) -> Void, failure: ((Error) -> Void)? = nil) {
+    enum Album {
+        public static func getInfo(name: String, artist: String, completion: @escaping (Result<LFMAlbum, Error>) -> Void) {
             
             var params = defaultParams
             params["album"] = name
             params["artist"] = artist
             
-            guard let url = Method.artist.composed(with: params) else {
-                print("*** Couldn't create valid url for the album.")
-                return
-            }
-            
-            Alamofire.request(url).responseData { response in
-                if let error = response.error {
-                    failure?(error)
-                }
-                guard let data = response.value else {
-                    return
-                }
-                if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
-                    failure?(error)
-                } else if let albumResponse = try? JSONDecoder().decode(AlbumResponse.self, from: data) {
-                    let album = albumResponse.album
-                    success(album)
+            LFM.shared.call(method: Method.album, queryParams: params) { (result: Result<AlbumResponse, Error>) in
+                switch result {
+                case .success(let response):
+                    completion(.success(response.album))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
             }
         }
@@ -72,30 +130,18 @@ public final class LFM {
  }
  
  public extension LFM {
-    enum artist {
-        public static func getInfo(name: String, success: @escaping (LFMArtist) -> Void, failure: ((Error) -> Void)? = nil) {
+    enum Artist {
+        public static func getInfo(name: String, completion: @escaping (Result<LFMArtist, Error>) -> Void) {
             
             var params = defaultParams
             params["artist"] = name
-            guard let url = Method.artist.composed(with: params) else {
-                print("*** Couldn't create valid url for the artist.")
-                return
-            }
             
-            Alamofire.request(url).responseData { response in
-                if let error = response.error {
-                    failure?(error)
-                }
-                guard let data = response.value else {
-                    return
-                }
-                if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
-                    failure?(error)
-                } else if let artistResponse = try? JSONDecoder().decode(ArtistResponse.self, from: data) {
-                    let artist = artistResponse.artist
-                    success(artist)
-                } else {
-                    failure?(LFMError(message: "Unknown error"))
+            LFM.shared.call(method: Method.artist, queryParams: params) { (result: Result<ArtistResponse, Error>) in
+                switch result {
+                case .success(let response):
+                    completion(.success(response.artist))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
             }
         }
@@ -106,13 +152,17 @@ public final class LFM {
     /**
      Module containing methods to call the /track API methods
      */
-    enum track {
-        public static func nowPlaying(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, success: (() -> Void)? = nil, failure: ((Error) -> Void)? = nil) {
+    enum Track {
+        public static func nowPlaying(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, completion: ((Error?) -> Void)?) {
             
-            guard auth.session?.isValid == true else {
-                auth.renewSession(success: {
-                    self.nowPlaying(track: name, artist: artist, album: album, albumArtist: albumArtist, trackNumber: trackNumber, duration: duration, success: success, failure: failure)
-                }, failure: failure)
+            guard LFM.Auth.session?.isValid == true else {
+                LFM.Auth.renewSession { error in
+                    if let error = error {
+                        completion?(error)
+                        return
+                    }
+                    self.nowPlaying(track: name, artist: artist, album: album, albumArtist: albumArtist, trackNumber: trackNumber, duration: duration, completion: completion)
+                }
                 return
             }
             
@@ -128,32 +178,19 @@ public final class LFM {
             params["api_sig"] = method.signed(with: params)
             params["format"] = "json"
             
-            guard let url = method.composed(with: params) else {
-                failure?(LFMError(message: "Failed to create url for method: \(method)"))
-                print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
-                return
-            }
-            Alamofire.request(url, method: .post).responseData { response in
-                if let error = response.error {
-                    failure?(error)
-                }
-                guard let data = response.value else {
-                    return
-                }
-                if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
-                    failure?(error)
-                } else {
-                    success?()
-                }
-            }
+            LFM.shared.call(method: method, queryParams: params, completion: completion)
         }
         
-        public static func scrobble(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, success: (() -> Void)? = nil, failure: ((Error) -> Void)? = nil) {
+        public static func scrobble(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, completion: ((Error?) -> Void)?) {
             
-            guard auth.session?.isValid == true else {
-                auth.renewSession(success: {
-                    self.scrobble(track: name, artist: artist, album: album, albumArtist: albumArtist, trackNumber: trackNumber, duration: duration, success: success, failure: failure)
-                }, failure: failure)
+            guard LFM.Auth.session?.isValid == true else {
+                LFM.Auth.renewSession { error in
+                    if let error = error {
+                        completion?(error)
+                        return
+                    }
+                    self.scrobble(track: name, artist: artist, album: album, albumArtist: albumArtist, trackNumber: trackNumber, duration: duration, completion: completion)
+                }
                 return
             }
             
@@ -170,24 +207,7 @@ public final class LFM {
             params["api_sig"] = method.signed(with: params)
             params["format"] = "json"
             
-            guard let url = method.composed(with: params) else {
-                failure?(LFMError(message: "Failed to create url for method: \(method)"))
-                print("*** Failed to create url for method: \(method)\nParams:\n\(params)")
-                return
-            }
-            Alamofire.request(url, method: .post).responseData { response in
-                if let error = response.error {
-                    failure?(error)
-                }
-                guard let data = response.value else {
-                    return
-                }
-                if let error = try? JSONDecoder().decode(LFMError.self, from: data) {
-                    failure?(error)
-                } else {
-                    success?()
-                }
-            }
+            LFM.shared.call(method: method, queryParams: params, completion: completion)
         }
     }
 }
@@ -196,6 +216,13 @@ private extension LFM {
     enum Method: String, LFMMethod {
         case album = "album.getinfo"
         case artist = "artist.getinfo"
+        
+        var httpMethod: HTTPMethod {
+            switch self {
+            case .album, .artist:
+                return .get
+            }
+        }
     }
     
     enum AuthenticatedMethod: String, LFMAuthenticatedMethod {
@@ -228,10 +255,12 @@ private extension LFM {
          - sk (Required) : A session key generated by authenticating a user via the authentication protocol.
          */
         case scrobble = "track.scrobble"
-    }
-    
-    enum UserDefaultsKey: String {
-        case albums = "LFMSavedAlbums"
-        case artists = "LFMSavedArtists"
+        
+        var httpMethod: HTTPMethod {
+            switch self {
+            case .nowPlaying, .scrobble:
+                return .post
+            }
+        }
     }
 }

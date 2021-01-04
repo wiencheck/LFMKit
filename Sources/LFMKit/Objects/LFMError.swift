@@ -40,7 +40,7 @@ import Foundation
  29 : Rate Limit Exceded - Your IP has made too many requests in a short period, exceeding our API guidelines
  */
 
-public struct LFMError: Error, Decodable {
+public struct LFMError: LocalizedError, Decodable {
     init(code: Int = 0, message: String) {
         self.code = code
         self.message = message
@@ -51,6 +51,10 @@ public struct LFMError: Error, Decodable {
     public let message: String
     
     public var errorDescription: String? {
+        return message
+    }
+    
+    public var localizedDescription: String {
         return message
     }
     
@@ -66,8 +70,8 @@ extension LFMError: CustomStringConvertible {
     }
 }
 
-extension LFMError: LocalizedError {
-    public var localizedDescription: String {
-        return message
-    }
+extension LFMError {
+    static let unknown = LFMError(code: -1, message: "Unknown error.")
+    static let invalidRequest = LFMError(code: -2, message: "Couldn't create valid request.")
+    static let couldNotReadData = LFMError(code: -3, message: "Couldn't read data or the data was empty.")
 }
