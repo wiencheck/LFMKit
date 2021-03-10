@@ -29,7 +29,8 @@ public struct Session: Codable {
     }
     
     public var isValid: Bool {
-        guard let creationDate = tokenCreationDate else {
+        guard token != nil,
+              let creationDate = tokenCreationDate else {
             return false
         }
         let interval = Date().timeIntervalSince(creationDate)

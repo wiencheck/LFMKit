@@ -36,7 +36,8 @@ public extension LFM {
             
             token { result in
                 switch result {
-                case .success(_):
+                case .success(let token):
+                    self.session?.token = token
                     completion?(nil)
                 case .failure(let error):
                     completion?(error)
@@ -114,6 +115,10 @@ public extension LFM {
                     completion(.failure(error))
                 }
             }
+        }
+        
+        public static func signOut() {
+            session = nil
         }
     }
 }
