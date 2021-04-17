@@ -59,7 +59,7 @@ public extension LFM {
                 "format": "json"
             ]
             
-            LFM.shared.call(method: Method.token, queryParams: params) { (result: Result<TokenResponse, Error>) in
+            LFM.call(method: Method.token, queryParams: params) { (result: Result<TokenResponse, Error>) in
                 switch result {
                 case .success(let response):
                     completion(.success(response.token))
@@ -87,7 +87,7 @@ public extension LFM {
                 // Default format is XML but we want Jason!
                 params["format"] = "json"
                 
-                LFM.shared.call(method: method, queryParams: params) { (result: Result<SessionResponse, Error>) in
+                LFM.call(method: method, queryParams: params) { (result: Result<SessionResponse, Error>) in
                     switch result {
                     case .success(let response):
                         var newSession = response.session

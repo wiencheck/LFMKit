@@ -11,8 +11,6 @@ protocol LFMMethod {
     static var apiKey: String { get }
     static var root: String { get }
     var httpMethod: HTTPMethod { get }
-    @available (iOS, deprecated, message: "Use `request` method")
-    func composed(with params: [String: String]?) -> URL?
     func request(with params: [String: String]?) -> URLRequest?
 }
 

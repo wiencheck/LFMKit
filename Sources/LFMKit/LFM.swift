@@ -1,8 +1,7 @@
  
 import Foundation
 
-public final class LFM {
-    static let shared = LFM()
+public struct LFM {
     /**
      Your API key obtained from Last.fm.
      */
@@ -21,7 +20,7 @@ public final class LFM {
         
     private init() {}
         
-    fileprivate class var defaultParams: [String: String] {
+    static var defaultParams: [String: String] {
         return [
         "api_key": apiKey,
         "lang": language,
@@ -29,7 +28,7 @@ public final class LFM {
         ]
     }
     
-    fileprivate class var defaultAuthParams: [String: String] {
+    fileprivate static var defaultAuthParams: [String: String] {
         var params = [
             "api_key": apiKey
         ]
@@ -39,7 +38,7 @@ public final class LFM {
         return params
     }
     
-    func call<T>(method: LFMMethod, queryParams: [String: String]?, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
+    static func call<T>(method: LFMMethod, queryParams: [String: String]?, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
         guard let request = method.request(with: queryParams) else {
             completion(.failure(LFMError.invalidRequest))
             return
@@ -48,7 +47,7 @@ public final class LFM {
         perform(request: request, completion: completion)
     }
     
-    func call(method: LFMMethod, queryParams: [String: String]?, completion: ((Error?) -> Void)?) {
+    static func call(method: LFMMethod, queryParams: [String: String]?, completion: ((Error?) -> Void)?) {
         guard let request = method.request(with: queryParams) else {
             completion?(LFMError.invalidRequest)
             return
@@ -57,7 +56,7 @@ public final class LFM {
         perform(request: request, completion: completion)
     }
     
-    private func perform<T>(request: URLRequest, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
+    private static func perform<T>(request: URLRequest, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -83,7 +82,7 @@ public final class LFM {
         }.resume()
     }
     
-    private func perform(request: URLRequest, completion: ((Error?) -> Void)?) {
+    private static func perform(request: URLRequest, completion: ((Error?) -> Void)?) {
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -117,7 +116,7 @@ public final class LFM {
             params["album"] = name
             params["artist"] = artist
             
-            LFM.shared.call(method: Method.album, queryParams: params) { (result: Result<AlbumResponse, Error>) in
+            LFM.call(method: Method.album, queryParams: params) { (result: Result<AlbumResponse, Error>) in
                 switch result {
                 case .success(let response):
                     completion(.success(response.album))
@@ -136,7 +135,7 @@ public final class LFM {
             var params = defaultParams
             params["artist"] = name
             
-            LFM.shared.call(method: Method.artist, queryParams: params) { (result: Result<ArtistResponse, Error>) in
+            LFM.call(method: Method.artist, queryParams: params) { (result: Result<ArtistResponse, Error>) in
                 switch result {
                 case .success(let response):
                     completion(.success(response.artist))
@@ -178,7 +177,7 @@ public final class LFM {
             params["api_sig"] = method.signed(with: params)
             params["format"] = "json"
             
-            LFM.shared.call(method: method, queryParams: params, completion: completion)
+            LFM.call(method: method, queryParams: params, completion: completion)
         }
         
         public static func scrobble(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, completion: ((Error?) -> Void)?) {
@@ -207,7 +206,7 @@ public final class LFM {
             params["api_sig"] = method.signed(with: params)
             params["format"] = "json"
             
-            LFM.shared.call(method: method, queryParams: params, completion: completion)
+            LFM.call(method: method, queryParams: params, completion: completion)
         }
     }
 }
