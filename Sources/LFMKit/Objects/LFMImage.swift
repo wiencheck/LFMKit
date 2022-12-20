@@ -8,7 +8,8 @@
 import Foundation
 
 public struct LFMImage: Codable {
-    public let url: String
+    
+    public let url: URL
     
     public let size: ImageSize
     
@@ -16,4 +17,5 @@ public struct LFMImage: Codable {
         case url = "#text"
         case size
     }
+    
 }

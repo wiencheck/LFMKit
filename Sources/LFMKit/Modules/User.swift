@@ -8,12 +8,13 @@
 import Foundation
 
 public extension LFM {
+    
     enum User {
         public static func getWeeklyChartList(username: String? = nil, completion: @escaping (Result<[ChartTimestamp], Error>) -> Void) {
             guard let username = username ?? Auth.session?.name else {
                 return
             }
-            var params = LFM.defaultParams
+            var params: [String: String] = [:]
             params["user"] = username
             
             LFM.call(method: Method.weeklyChartList, queryParams: params) { (result: Result<WeeklyChartListResponse, Error>) in
@@ -31,7 +32,7 @@ public extension LFM {
             guard let username = username ?? Auth.session?.name else {
                 return
             }
-            var params = LFM.defaultParams
+            var params: [String: String] = [:]
             params["user"] = username
             if let from = from {
                 params["from"] = String(from)

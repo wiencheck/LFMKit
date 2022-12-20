@@ -8,6 +8,7 @@
 import Foundation
 
 public struct ChartTimestamp: Decodable {
+    
     public let from: UInt
     
     public let to: UInt
@@ -27,7 +28,7 @@ public struct ChartTimestamp: Decodable {
         return Date(timeIntervalSince1970: time)
     }
     
-    // - MARK: Codable stuff
+    // MARK: Codable stuff
     private enum CodingKeys: String, CodingKey {
         case fromEpochTimestamp = "from"
         case toEpochTimestamp = "to"

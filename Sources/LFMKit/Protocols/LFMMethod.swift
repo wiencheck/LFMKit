@@ -8,34 +8,35 @@
 import Foundation
 
 protocol LFMMethod {
-    static var apiKey: String { get }
-    static var root: String { get }
+    
     var httpMethod: HTTPMethod { get }
-    func request(with params: [String: String]?) -> URLRequest?
+    var name: String { get }
+    
 }
 
 extension LFMMethod {
-    static var apiKey: String {
-        return LFM.apiKey
-    }
+    static var apiKey: String { LFM.apiKey }
     
-    static var root: String {
-        return "ws.audioscrobbler.com"
-    }
+    static var root: String { "ws.audioscrobbler.com" }
     
-    static var path: String {
-        return "/2.0/"
-    }
+    static var path: String { "/2.0/" }
 }
 
 extension LFMMethod where Self: RawRepresentable, RawValue == String {
+    
+    var name: String { rawValue }
+    
+}
+
+extension LFMMethod {
+    
     func composed(with params: [String: String]?) -> URL? {
         var components = URLComponents()
         components.scheme = "https"
         components.host = Self.root
         components.path = Self.path
         components.queryItems =
-            [URLQueryItem(name: "method", value: rawValue)] +
+            [URLQueryItem(name: "method", value: name)] +
             (params?.compactMap { key, value in
             return URLQueryItem(name: key, value: value)
         } ?? [])
@@ -48,7 +49,7 @@ extension LFMMethod where Self: RawRepresentable, RawValue == String {
         components.host = Self.root
         components.path = Self.path
         components.queryItems =
-            [URLQueryItem(name: "method", value: rawValue)] +
+            [URLQueryItem(name: "method", value: name)] +
             (params?.compactMap { key, value in
             return URLQueryItem(name: key, value: value)
         } ?? [])
@@ -57,4 +58,5 @@ extension LFMMethod where Self: RawRepresentable, RawValue == String {
         }
         return URLRequest(url: url, method: httpMethod)
     }
+    
 }

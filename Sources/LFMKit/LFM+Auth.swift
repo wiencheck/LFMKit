@@ -6,10 +6,15 @@
 //
 
 import Foundation
+import Combine
 
 public extension LFM {
+    
     enum Auth {
         private static let sessionUserDefaultsKey = "LFMSessionUserDefaultsKey"
+        
+        @available(iOS 13.0, *)
+        private static var sessionUpdatedSubject: PassthroughSubject<Session?, Never> = .init()
         
         public private(set) static var session: Session? {
             get {
@@ -19,6 +24,11 @@ public extension LFM {
                 }
                 return decoded
             } set {
+                defer {
+                    if #available(iOS 13.0, *) {
+                        sessionUpdatedSubject.send(newValue)
+                    }
+                }
                 guard let newValue = newValue,
                     let data = try? JSONEncoder().encode(newValue) else {
                         UserDefaults.standard.removeObject(forKey: Auth.sessionUserDefaultsKey)
@@ -28,9 +38,14 @@ public extension LFM {
             }
         }
         
+        @available(iOS 13.0, *)
+        public static var sessionUpdatedPublisher: AnyPublisher<Session?, Never> {
+            sessionUpdatedSubject.eraseToAnyPublisher()
+        }
+        
         public static func renewSession(completion: ((Error?) -> Void)?) {
             if session == nil {
-                print("*** Session cannot be nil")
+                completion?(LastFMInvalidSessionError())
                 return
             }
             
@@ -51,7 +66,7 @@ public extension LFM {
         
         private static func token(completion: @escaping (Result<String, Error>) -> Void) {
             guard !LFM.apiKey.isEmpty else {
-                print("*** 'clientKey' cannot be empty")
+                completion(.failure(LastFMInvalidSessionError()))
                 return
             }
             let params = [
@@ -71,7 +86,7 @@ public extension LFM {
         
         public static func authenticate(username: String, password: String, completion: @escaping (Result<Session, Error>) -> Void) {
             guard !LFM.apiKey.isEmpty && !LFM.apiSecret.isEmpty else {
-                print("*** 'clientKey' cannot be empty")
+                completion(.failure(LastFMInvalidAPICredentialsError()))
                 return
             }
             
@@ -121,9 +136,29 @@ public extension LFM {
             session = nil
         }
     }
+    
+}
+
+@available(iOS 13.0, *)
+extension LFM.Auth {
+    
+    public static func renewSession() async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            self.renewSession { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                }
+                else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
 }
 
 extension LFM.Auth {
+    
     enum Method: String, LFMMethod {
         /**
          Parameters for this method are:
@@ -151,4 +186,13 @@ extension LFM.Auth {
             return .post
         }
     }
+    
+}
+
+public struct LastFMInvalidSessionError: Error {
+    
+}
+
+public struct LastFMInvalidAPICredentialsError: Error {
+    
 }

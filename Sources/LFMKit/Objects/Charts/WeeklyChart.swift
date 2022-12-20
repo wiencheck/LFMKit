@@ -14,7 +14,7 @@ public class WeeklyChart<T: ChartItem>: Decodable {
     
     public let timestamp: ChartTimestamp
         
-    // - MARK: Codable
+    // MARK: Codable
     private struct CodingKeys: CodingKey {
         var stringValue: String
         var intValue: Int?

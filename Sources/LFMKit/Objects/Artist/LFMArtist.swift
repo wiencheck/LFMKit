@@ -8,6 +8,7 @@
 import Foundation
 
 public class LFMArtist: LFMSimplifiedArtist {
+    
     public let wiki: Wiki?
         
     public let images: [LFMImage]
@@ -16,7 +17,7 @@ public class LFMArtist: LFMSimplifiedArtist {
     
     public let playcount: UInt
     
-    // - MARK: Codable
+    // MARK: Codable
     private enum CodingKeys: String, CodingKey {
         case wiki = "bio"
         case images = "image"

@@ -1,7 +1,7 @@
- 
 import Foundation
 
 public struct LFM {
+    
     /**
      Your API key obtained from Last.fm.
      */
@@ -12,23 +12,24 @@ public struct LFM {
      Secret is used for calls requiring authentication, like `scrobble`, or `updateNowPlaying`.
      */
     public static var apiSecret = ""
-        
+    
     /**
      Requested language of `getInfo` calls.
      */
     public static var language = "en"
-        
-    private init() {}
-        
+    
+    @available(*, unavailable)
+    init() {}
+    
     static var defaultParams: [String: String] {
         return [
-        "api_key": apiKey,
-        "lang": language,
-        "format": "json"
+            "api_key": apiKey,
+            "lang": language,
+            "format": "json"
         ]
     }
     
-    fileprivate static var defaultAuthParams: [String: String] {
+    static var defaultAuthParams: [String: String] {
         var params = [
             "api_key": apiKey
         ]
@@ -38,7 +39,7 @@ public struct LFM {
         return params
     }
     
-    static func call<T>(method: LFMMethod, queryParams: [String: String]?, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
+    static func call<M, T>(method: M, queryParams: [String: String]?, completion: @escaping (Result<T, Error>) -> Void) where M: LFMMethod, T: Decodable {
         guard let request = method.request(with: queryParams) else {
             completion(.failure(LFMError.invalidRequest))
             return
@@ -47,7 +48,7 @@ public struct LFM {
         perform(request: request, completion: completion)
     }
     
-    static func call(method: LFMMethod, queryParams: [String: String]?, completion: ((Error?) -> Void)?) {
+    static func call<M>(method: M, queryParams: [String: String]?, completion: ((Error?) -> Void)?) where M: LFMMethod {
         guard let request = method.request(with: queryParams) else {
             completion?(LFMError.invalidRequest)
             return
@@ -56,8 +57,11 @@ public struct LFM {
         perform(request: request, completion: completion)
     }
     
-    private static func perform<T>(request: URLRequest, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
-        
+}
+
+private extension LFM {
+    
+    static func perform<T>(request: URLRequest, completion: @escaping (Result<T, Error>) -> Void) where T: Decodable {
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(error))
@@ -82,8 +86,7 @@ public struct LFM {
         }.resume()
     }
     
-    private static func perform(request: URLRequest, completion: ((Error?) -> Void)?) {
-        
+    static func perform(request: URLRequest, completion: ((Error?) -> Void)?) {
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion?(error)
@@ -106,160 +109,5 @@ public struct LFM {
             }
         }.resume()
     }
-}
- 
- public extension LFM {
-    enum Album {
-        public static func getInfo(name: String, artist: String, completion: @escaping (Result<LFMAlbum, Error>) -> Void) {
-            
-            var params = defaultParams
-            params["album"] = name
-            params["artist"] = artist
-            
-            LFM.call(method: Method.album, queryParams: params) { (result: Result<AlbumResponse, Error>) in
-                switch result {
-                case .success(let response):
-                    completion(.success(response.album))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
-            }
-        }
-    }
- }
- 
- public extension LFM {
-    enum Artist {
-        public static func getInfo(name: String, completion: @escaping (Result<LFMArtist, Error>) -> Void) {
-            
-            var params = defaultParams
-            params["artist"] = name
-            
-            LFM.call(method: Method.artist, queryParams: params) { (result: Result<ArtistResponse, Error>) in
-                switch result {
-                case .success(let response):
-                    completion(.success(response.artist))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
-            }
-        }
-    }
- }
- 
- public extension LFM {
-    /**
-     Module containing methods to call the /track API methods
-     */
-    enum Track {
-        public static func nowPlaying(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, completion: ((Error?) -> Void)?) {
-            
-            guard LFM.Auth.session?.isValid == true else {
-                LFM.Auth.renewSession { error in
-                    if let error = error {
-                        completion?(error)
-                        return
-                    }
-                    self.nowPlaying(track: name, artist: artist, album: album, albumArtist: albumArtist, trackNumber: trackNumber, duration: duration, completion: completion)
-                }
-                return
-            }
-            
-            var params = LFM.defaultAuthParams
-            params["track"] = name
-            params["artist"] = artist
-            params["timestamp"] = String(Int(Date().timeIntervalSince1970))
-            if let duration = duration {
-                params["duration"] = String(Int(duration))
-            }
-            
-            let method = AuthenticatedMethod.nowPlaying
-            params["api_sig"] = method.signed(with: params)
-            params["format"] = "json"
-            
-            LFM.call(method: method, queryParams: params, completion: completion)
-        }
-        
-        public static func scrobble(track name: String, artist: String, album: String?, albumArtist: String?, trackNumber: Int?, duration: TimeInterval?, completion: ((Error?) -> Void)?) {
-            
-            guard LFM.Auth.session?.isValid == true else {
-                LFM.Auth.renewSession { error in
-                    if let error = error {
-                        completion?(error)
-                        return
-                    }
-                    self.scrobble(track: name, artist: artist, album: album, albumArtist: albumArtist, trackNumber: trackNumber, duration: duration, completion: completion)
-                }
-                return
-            }
-            
-            var params = defaultAuthParams
-            // We have to first add real name and artist so method's signature is correct
-            params["track"] = name
-            params["artist"] = artist
-            params["timestamp"] = String(Int(Date().timeIntervalSince1970))
-            if let duration = duration {
-                params["duration"] = String(Int(duration))
-            }
-            
-            let method = AuthenticatedMethod.scrobble
-            params["api_sig"] = method.signed(with: params)
-            params["format"] = "json"
-            
-            LFM.call(method: method, queryParams: params, completion: completion)
-        }
-    }
-}
-
-private extension LFM {
-    enum Method: String, LFMMethod {
-        case album = "album.getinfo"
-        case artist = "artist.getinfo"
-        
-        var httpMethod: HTTPMethod {
-            switch self {
-            case .album, .artist:
-                return .get
-            }
-        }
-    }
     
-    enum AuthenticatedMethod: String, LFMAuthenticatedMethod {
-        /**
-         Parameters for this method are:
-         - artist[i] (Required) : The artist name.
-         - track[i] (Required) : The track name.
-         - timestamp[i] (Required) : The time the track started playing, in UNIX timestamp format (integer number of seconds since 00:00:00, January 1st 1970 UTC). This must be in the UTC time zone.
-         - album[i] (Optional) : The album name.
-         - trackNumber[i] (Optional) : The track number of the track on the album.
-         - albumArtist[i] (Optional) : The album artist - if this differs from the track artist.
-         - duration[i] (Optional) : The length of the track in seconds.
-         - api_key (Required) : A Last.fm API key.
-         - api_sig (Required) : A Last.fm method signature. See authentication for more information.
-         - sk (Required) : A session key generated by authenticating a user via the authentication protocol.
-         */
-        case nowPlaying = "track.updateNowPlaying"
-        
-        /**
-        Parameters for this method are:
-         - artist[i] (Required) : The artist name.
-         - track[i] (Required) : The track name.
-         - timestamp[i] (Required) : The time the track started playing, in UNIX timestamp format (integer number of seconds since 00:00:00, January 1st 1970 UTC). This must be in the UTC time zone.
-         - album[i] (Optional) : The album name.
-         - trackNumber[i] (Optional) : The track number of the track on the album.
-         - albumArtist[i] (Optional) : The album artist - if this differs from the track artist.
-         - duration[i] (Optional) : The length of the track in seconds.
-         - api_key (Required) : A Last.fm API key.
-         - api_sig (Required) : A Last.fm method signature. See authentication for more information.
-         - sk (Required) : A session key generated by authenticating a user via the authentication protocol.
-         */
-        case scrobble = "track.scrobble"
-        
-        var httpMethod: HTTPMethod {
-            switch self {
-            case .nowPlaying, .scrobble:
-                return .post
-            }
-        }
-    }
 }

@@ -10,7 +10,7 @@ import Foundation
 public struct WeeklyChartList: Decodable {
     public let charts: [ChartTimestamp]
     
-    // - MARK: Codable stuff
+    // MARK: Codable stuff
     private enum CodingKeys: String, CodingKey {
         case charts = "chart"
     }
@@ -19,7 +19,7 @@ public struct WeeklyChartList: Decodable {
 struct WeeklyChartListResponse: Decodable {
     let chartList: WeeklyChartList
     
-    // - MARK: Codable stuff
+    // MARK: Codable stuff
     private enum CodingKeys: String, CodingKey {
         case chartList = "weeklychartlist"
     }

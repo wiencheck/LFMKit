@@ -10,7 +10,7 @@ import Foundation
 public class LFMChartAlbum: ChartItem {
     public let artist: LFMSimplifiedChartArtist
     
-    // - MARK: Codable
+    // MARK: Codable
     private enum CodingKeys: String, CodingKey {
         case artist
     }

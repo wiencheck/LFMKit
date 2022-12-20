@@ -16,7 +16,7 @@ public class ChartItem: LFMBaseObject {
     
     public let playcount: UInt
     
-    // - MARK: Codable
+    // MARK: Codable
     private enum CodingKeys: String, CodingKey {
         case playcount, rank
         case attributes = "@attr"

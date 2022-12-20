@@ -20,7 +20,7 @@ public class LFMAlbum: LFMBaseObject {
     
     public let images: [LFMImage]
     
-    // - MARK: Codable
+    // MARK: Codable
     private enum CodingKeys: String, CodingKey {
         case artist, playcount, wiki, listeners
         case releaseDate = "releasedate"

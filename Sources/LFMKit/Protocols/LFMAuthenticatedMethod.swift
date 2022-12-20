@@ -7,10 +7,7 @@
 
 import Foundation
 
-protocol LFMAuthenticatedMethod: LFMMethod {
-    static var apiSecret: String { get }
-    func signed(with params: [String: String]?) -> String
-}
+protocol LFMAuthenticatedMethod: LFMMethod {}
 
 extension LFMAuthenticatedMethod {
     static var apiSecret: String {
@@ -18,10 +15,11 @@ extension LFMAuthenticatedMethod {
     }
 }
 
-extension LFMAuthenticatedMethod where Self: RawRepresentable, RawValue == String {
+extension LFMAuthenticatedMethod {
+    
     func signed(with params: [String: String]?) -> String {
         var updatedParams = params ?? [:]
-        updatedParams["method"] = rawValue
+        updatedParams["method"] = name
         
         // Parameters have to be sorted alphabetically, according do docs.
         let sortedKeys = updatedParams.keys.sorted(by: <)
@@ -32,4 +30,5 @@ extension LFMAuthenticatedMethod where Self: RawRepresentable, RawValue == Strin
         let str = pairs.joined() + Self.apiSecret
         return str.md5
     }
+    
 }
